@@ -18,7 +18,7 @@ else:
 # From selected secret file, grab the api_key.
 api_key = secret.api_key
 
-# Create headers to authorize with api_key. and to accept request output in JSON.
+# Create headers to authorize with api_key and to request output in JSON.
 headers = {"Authorization": "apikey "+api_key,
            "Accept": "application/json"}
 # Create parameters variable to ask for only brief bibs.
@@ -28,9 +28,12 @@ params = {'view': 'brief'}
 mms_id_list = ['991007192979707861', '991040869259707861', '991003844629707861']
 
 for mms_id in mms_id_list:
-    # Create URL to ask for specific mms_id record.
+    # Create URL for specific mms_id record.
     full_url = baseURL+endpoint+mms_id
     print(full_url)
-    r = requests.get(full_url, headers=headers, params=params).json()
+    # Make request for brief bib.
+    r = requests.get(full_url, headers=headers, params=params)
+    # Decode response into JSON.
+    r = r.json()
     for key, value in r.items():
         print(key, value)
