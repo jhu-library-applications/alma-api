@@ -26,8 +26,9 @@ headers = {"Authorization": "apikey "+api_key,
 filename = 'lsc_afa_freezed_copy_2023-07-17.csv'
 df = pd.read_csv(filename, dtype='string')
 
-
+all_items = []
 for count, row in df.iterrows():
+    row = row
     current_barcode = row['current_barcode']
     print(count, current_barcode)
     barcode_endpoint = '/almaws/v1/items?item_barcode={}'.format(current_barcode)
@@ -37,6 +38,18 @@ for count, row in df.iterrows():
     try:
         # Try getting 'link' field from item_metadata.
         full_link = item_metadata['link']
+        row['full_link'] = full_link
         print(full_link)
     except KeyError:
-        print(item_metadata)
+        error_list = []
+        errors = item_metadata['errorList']
+        errors = errors['error']
+        for error in errors:
+            error_message = error['errorMessage']
+            error_list.append(error_message)
+        error_list = '|'.join(error_list)
+        row['error'] = error_list
+    all_items.append(row)
+
+updated_df = pd.DataFrame.from_dict(all_items)
+updated_df.to_csv('updated_lsc_afa.csv', index=False)

@@ -157,3 +157,4 @@ cython_debug/
 # API Keys
 secret.py
 secretProd.py
+*.csv
