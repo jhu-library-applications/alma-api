@@ -44,6 +44,7 @@ def get_errors(metadata):
 
 start_row = 0
 stop_row = 10000
+print(stop_row)
 
 item_log = []
 for count, row in df.iterrows():
