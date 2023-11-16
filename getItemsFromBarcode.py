@@ -68,6 +68,18 @@ for count, row in df.iterrows():
             update_link = baseURL+full_link
             print(update_link)
             update = requests.put(update_link, headers=headers, data=item_metadata).json()
+            try:
+                description = update['description']
+                row['updated_description'] = description
+            except KeyError:
+                error_list = []
+                errors = item_metadata['errorList']
+                errors = errors['error']
+                for error in errors:
+                    error_message = error['errorMessage']
+                    error_list.append(error_message)
+                error_list = '|'.join(error_list)
+                row['error'] = error_list
             print(update)
     else:
         row['error'] = 'Item already updated'

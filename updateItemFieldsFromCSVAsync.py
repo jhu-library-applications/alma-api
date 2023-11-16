@@ -4,8 +4,11 @@ import argparse
 import aiohttp
 import asyncio
 import json
+from asyncio_throttle import Throttler
 from datetime import datetime
 import csv
+
+throttler = Throttler(rate_limit=25, period=1)
 
 startTime = datetime.now()
 
@@ -44,9 +47,13 @@ update_headers = {"Authorization": "apikey "+api_key,
 
 df = pd.read_csv(filename, dtype={'pid': int, 'mms_id': int, 'barcode': int, 'holding_id': int})
 total_rows = len(df)
-item_log = []
-update_log = []
+df['item_link'] = baseURL+'/almaws/v1/bibs/'+df['mms_id'].astype(str)+'/holdings/'+df['holding_id'].astype(str)\
+                  +'/items/'+df['pid'].astype(str)
+df = df.set_index('item_link')
+item_links = df.index.to_list()
 metadata_list = []
+update_logs = []
+item_logs = []
 
 
 def get_errors(metadata, log):
@@ -60,94 +67,86 @@ def get_errors(metadata, log):
     log['error'] = errors
 
 
-async def update_item(session, update_item_url, metadata):
+async def update_item(session, metadata):
     updated_metadata = None
     post_error = None
-    async with session.put(update_item_url, headers=update_headers, data=metadata) as updated_response:
-        if updated_response.status != 200:
-            post_error = await updated_response.json()
-        else:
-            updated_metadata = await updated_response.json()
-        return updated_metadata, post_error
+    update_item_url = metadata['link']
+    metadata = json.dumps(metadata)
+    async with throttler:
+        async with session.put(update_item_url, headers=update_headers, data=metadata) as updated_response:
+            if updated_response.status != 200:
+                post_error = await updated_response.json()
+                print(update_item_url, updated_response.status)
+            else:
+                updated_metadata = await updated_response.json()
+                print(update_item_url, updated_response.status)
+    data = {'link': update_item_url, 'metadata': updated_metadata, 'error': post_error}
+    return data
 
 
 async def get_item(session, url):
     metadata = None
-    get_error = None
-    async with session.get(url, headers=headers) as response:
-        if response.status != 200:
-            get_error = await response.json()
-        else:
-            metadata = await response.json()
-    return metadata, get_error
+    error = None
+    async with throttler:
+        async with session.get(url, headers=headers) as response:
+            if response.status != 200:
+                error = await response.json()
+                print(url, response.status)
+            else:
+                metadata = await response.json()
+                print(url, response.status)
+    data = {'link': url, 'metadata': metadata, 'error': error}
+    return data
 
 
 async def main():
     session = aiohttp.ClientSession()
-    for count, row in df.iterrows():
-        actual_count = count + 1
-        remaining = total_rows - actual_count
-        metadata_count = len(metadata_list)
-        if (metadata_count <= 1000) and (remaining > 0):
-            log = row
-            # Get item information from DataFrame.
-            item_barcode = str(row.get('barcode'))
-            mms_id = str(row.get('mms_id'))
-            holding_id = str(row.get('holding_id'))
-            pid = str(row.get('pid'))
-            print('Getting item {}. Count: {} of {}'.format(item_barcode, actual_count, total_rows))
-            # Using information from DataFrame, get current item JSON from API
-            item_endpoint = '/almaws/v1/bibs/{}/holdings/{}/items/{}'.format(mms_id, holding_id, pid)
-            get_item_url = baseURL + item_endpoint
-            # Make request for item.
-            metadata, get_error = await get_item(session, get_item_url)
-            if metadata is not None:
-                item_data = metadata['item_data']
-                current_description = item_data['description']
-                old_description = row.get('old_description')
-                new_description = row.get('new_description')
-                if old_description == current_description:
-                    item_data['description'] = new_description
-                    metadata['item_data'] = item_data
-                    metadata_list.append(metadata)
-                else:
-                    log['error'] = 'Description already updated'
+    item_requests = [get_item(session, link) for link in item_links]
+    responses = await asyncio.gather(*item_requests)
+    for response in responses:
+        link = response['link']
+        error = response['error']
+        metadata = response['metadata']
+        log = {'link': link}
+        if metadata is not None:
+            item_data = metadata['item_data']
+            current_description = item_data['description']
+            old_description = df.at[link, 'old_description']
+            new_description = df.at[link, 'new_description']
+            if old_description == current_description:
+                item_data['description'] = new_description
+                metadata['item_data'] = item_data
+                metadata_list.append(metadata)
             else:
-                get_errors(get_error, log)
-            item_log.append(log)
-
+                log['error'] = 'Description already updated'
         else:
-            for number, item_metadata in enumerate(metadata_list):
-                log = {}
-                full_link = item_metadata['link']
-                barcode = item_metadata['item_data']['barcode']
-                log['full_link'] = full_link
-                log['barcode'] = int(barcode)
-                print('Posting item {}. Count: {}'.format(barcode, number))
-                # Convert item_metadata into a json string.
-                metadata = json.dumps(item_metadata)
-                # Update item JSON using full_link (same as pid endpoint).
-                update_item_url = full_link
-                updated_metadata, post_error = await update_item(session, update_item_url, metadata)
-                if updated_metadata is not None:
-                    updated_item = updated_metadata['item_data']
-                    updated_description = updated_item['description']
-                    log['updated_description'] = updated_description
-                else:
-                    get_errors(post_error, log)
-                    update_log.append(log)
-                update_log.append(log)
-            metadata_list.clear()
+            get_errors(error, log)
+        item_logs.append(log)
+    item_updates = [update_item(session, metadata) for metadata in metadata_list]
+    update_responses = await asyncio.gather(*item_updates)
+    for updated_response in update_responses:
+        link = updated_response['link']
+        post_error = updated_response['error']
+        updated_metadata = updated_response['metadata']
+        update_log = {'link': link}
+        if updated_metadata is not None:
+            updated_item = updated_metadata['item_data']
+            updated_description = updated_item['description']
+            update_log['updated_description'] = updated_description
+        else:
+            get_errors(post_error, update_log)
+        update_logs.append(update_log)
+
     await session.close()
 
 asyncio.run(main())
 
 # Convert item_log to DataFrame.
-update_log = pd.DataFrame.from_dict(update_log)
-log_df = pd.DataFrame.from_dict(item_log)
-complete_log = pd.merge(update_log, log_df, how='left', on='barcode')
+update_logs = pd.DataFrame.from_dict(update_logs)
+item_logs = pd.DataFrame.from_dict(item_logs)
+complete_log = pd.merge(update_logs, item_logs, how='left', on='link')
 
 dt = datetime.now().strftime('%Y-%m-%d%H.%M.%S')
 # Create CSV using DataFrame log. Quote all fields to avoid barcodes converting to scientific notation.
-log_df.to_csv('updatedItemsFieldsLog_10_'+dt+'.csv', index=False, quoting=csv.QUOTE_ALL)
+complete_log.to_csv('updatedItemsFieldsLog_10_'+dt+'.csv', index=False, quoting=csv.QUOTE_ALL)
 print(datetime.now() - startTime)
