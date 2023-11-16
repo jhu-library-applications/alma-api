@@ -76,10 +76,10 @@ async def update_item(session, metadata):
         async with session.put(update_item_url, headers=update_headers, data=metadata) as updated_response:
             if updated_response.status != 200:
                 post_error = await updated_response.json()
-                print(update_item_url, updated_response.status)
+                print('Update error {}.'.format(update_item_url))
             else:
                 updated_metadata = await updated_response.json()
-                print(update_item_url, updated_response.status)
+                print('Updated {}'.format(update_item_url))
     data = {'link': update_item_url, 'metadata': updated_metadata, 'error': post_error}
     return data
 
@@ -91,10 +91,10 @@ async def get_item(session, url):
         async with session.get(url, headers=headers) as response:
             if response.status != 200:
                 error = await response.json()
-                print(url, response.status)
+                print('Retrieval error {}.'.format(url))
             else:
                 metadata = await response.json()
-                print(url, response.status)
+                print('Retrieved {}.'.format(url))
     data = {'link': url, 'metadata': metadata, 'error': error}
     return data
 
@@ -107,7 +107,7 @@ async def main():
         link = response['link']
         error = response['error']
         metadata = response['metadata']
-        log = {'link': link}
+        log = {'link': link, 'get_error': error}
         if metadata is not None:
             item_data = metadata['item_data']
             current_description = item_data['description']
@@ -118,7 +118,7 @@ async def main():
                 metadata['item_data'] = item_data
                 metadata_list.append(metadata)
             else:
-                log['error'] = 'Description already updated'
+                log['description_error'] = 'Description already updated'
         else:
             get_errors(error, log)
         item_logs.append(log)
@@ -128,7 +128,7 @@ async def main():
         link = updated_response['link']
         post_error = updated_response['error']
         updated_metadata = updated_response['metadata']
-        update_log = {'link': link}
+        update_log = {'link': link, 'post_error': post_error}
         if updated_metadata is not None:
             updated_item = updated_metadata['item_data']
             updated_description = updated_item['description']
@@ -147,6 +147,7 @@ item_logs = pd.DataFrame.from_dict(item_logs)
 complete_log = pd.merge(update_logs, item_logs, how='left', on='link')
 
 dt = datetime.now().strftime('%Y-%m-%d%H.%M.%S')
+filename = filename.replace('.csv', 'csv')
 # Create CSV using DataFrame log. Quote all fields to avoid barcodes converting to scientific notation.
-complete_log.to_csv('updatedItemsFieldsLog_10_'+dt+'.csv', index=False, quoting=csv.QUOTE_ALL)
+complete_log.to_csv('log_'+filename+'_'+dt+'.csv', index=False, quoting=csv.QUOTE_ALL)
 print(datetime.now() - startTime)
