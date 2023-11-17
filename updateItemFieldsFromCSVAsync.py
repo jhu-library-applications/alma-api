@@ -68,7 +68,7 @@ print('Total items {}, split into {} batches.'.format(total_links, total_batches
 
 
 # Function to extract errors from JSON response.
-def get_errors(metadata, log):
+def get_errors(metadata):
     if isinstance(metadata, dict):
         errors = []
         error_list = metadata['errorList']['error']
@@ -76,10 +76,10 @@ def get_errors(metadata, log):
             error_message = error['errorMessage']
             errors.append(error_message)
         errors = '|'.join(errors)
-        log['error'] = errors
+        error = errors
     else:
-        print(metadata)
-        log['error'] = metadata
+        error = metadata
+    return error
 
 
 async def update_item(session, metadata):
@@ -121,10 +121,10 @@ async def get_item(session, url):
                     # print('Retrieved {}.'.format(url))
     except aiohttp.ClientError:
         error = 'ClientError'
-        print(error)
+        print(repr(error))
     except asyncio.TimeoutError:
         error = 'TimeoutError'
-        print(error)
+        print(repr(error))
     data = {'link': url, 'metadata': metadata, 'error': error}
     return data
 
@@ -141,7 +141,7 @@ async def main():
         error = response['error']
         metadata = response['metadata']
         # Create item log for record-keeping..
-        log = {'link': link, 'get_error': error}
+        log = {'link': link}
         # If API returned metadata, update description in JSON based on DataFrame information.
         if metadata is not None:
             item_data = metadata['item_data']
@@ -160,7 +160,8 @@ async def main():
                 update_log = {'description_error': description_error, 'link': link}
                 update_logs.append(update_log)
         else:
-            get_errors(error, log)
+            formatted_error = get_errors(error)
+            log['get_error'] = formatted_error
         # Add log to list 'item_logs'.
         item_logs.append(log)
     # Loop through metadata in metadata_list and post update API.
@@ -172,13 +173,14 @@ async def main():
         link = updated_response['link']
         post_error = updated_response['error']
         updated_metadata = updated_response['metadata']
-        update_log = {'link': link, 'post_error': post_error}
+        update_log = {'link': link}
         if updated_metadata is not None:
             updated_item = updated_metadata['item_data']
             updated_description = updated_item['description']
             update_log['updated_description'] = updated_description
         else:
-            get_errors(post_error, update_log)
+            formatted_error = get_errors(post_error)
+            update_log['post_error'] = formatted_error
         update_logs.append(update_log)
 
     await session.close()
