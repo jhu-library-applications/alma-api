@@ -189,7 +189,7 @@ for batch_count, item_links in enumerate(item_link_batches):
     startTime = datetime.now()
     batch_count = batch_count + 1
     string_batch_count = str(batch_count)
-    if batch_count >= 3:
+    if batch_count >= 1:
         time.sleep(2)
         # Create empty logs.
         update_logs = []
