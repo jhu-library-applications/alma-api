@@ -44,7 +44,7 @@ update_headers = {"Authorization": "apikey " + api_key,
                   "Content-Type": "application/json"}
 
 # Set rate for requests at 15 requests per second.
-throttler = Throttler(rate_limit=15, period=1)
+throttler = Throttler(rate_limit=25, period=1)
 
 # Read CSV into DataFrame and create full link for each item in new column 'item_link.'
 df = pd.read_csv(filename, dtype={'pid': int, 'mms_id': int, 'holding_id': int})
@@ -90,7 +90,7 @@ async def update_item(session, metadata):
     try:
         async with throttler:
             async with session.put(update_item_url, headers=update_headers, data=metadata,
-                                   timeout=60) as updated_response:
+                                   timeout=180) as updated_response:
                 if updated_response.status != 200:
                     post_error = await updated_response.json()
                     print('Update error {}.'.format(update_item_url))

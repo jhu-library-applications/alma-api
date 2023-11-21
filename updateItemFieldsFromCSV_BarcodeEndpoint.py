@@ -3,6 +3,7 @@ import secret
 import json
 import pandas as pd
 import time
+from datetime import datetime
 
 start_time = time.time()
 
@@ -27,7 +28,7 @@ headers = {"Authorization": "apikey "+api_key,
            "Accept": "application/json",
            "Content-Type": "application/json"}
 
-filename = 'lsc_afa_freezed_copy_2023-07-17.csv'
+filename = 'completed_LSC_AFAFreeze_11-15-23.csv'
 df = pd.read_csv(filename, dtype='string')
 
 all_items = []
@@ -67,10 +68,13 @@ for count, row in df.iterrows():
             item_metadata = json.dumps(item_metadata)
             update_link = baseURL+full_link
             print(update_link)
-            update = requests.put(update_link, headers=headers, data=item_metadata).json()
+            updated_metadata = requests.put(update_link, headers=headers, data=item_metadata).json()
             try:
-                description = update['description']
-                row['updated_description'] = description
+                updated_item = updated_metadata['item_data']
+                updated_description = updated_item['description']
+                updated_rmst = updated_item['storage_location_id']
+                row['updated_description'] = updated_description
+                row['updated_rmst'] = updated_rmst
             except KeyError:
                 error_list = []
                 errors = item_metadata['errorList']
@@ -86,5 +90,6 @@ for count, row in df.iterrows():
     all_items.append(row)
 
 updated_df = pd.DataFrame.from_dict(all_items)
-updated_df.to_csv('updated_lsc_afa.csv', index=False)
+dt = datetime.now().strftime('%Y-%m-%d%H.%M.%S')
+updated_df.to_csv('updated_lsc_afa_'+dt+'.csv', index=False)
 print("--- %s seconds ---" % (time.time() - start_time))
