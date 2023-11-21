@@ -56,6 +56,7 @@ for count, row in df.iterrows():
             error_list.append(error_message)
         error_list = '|'.join(error_list)
         row['error'] = error_list
+        continue
     item_data = item_metadata['item_data']
     rmst = item_data['storage_location_id']
     item_barcode = item_data['barcode']
@@ -66,7 +67,7 @@ for count, row in df.iterrows():
             item_metadata.pop('bib_data')
             # Convert item_metadata into a json string.
             item_metadata = json.dumps(item_metadata)
-            update_link = baseURL+full_link
+            update_link = full_link
             print(update_link)
             updated_metadata = requests.put(update_link, headers=headers, data=item_metadata).json()
             try:
