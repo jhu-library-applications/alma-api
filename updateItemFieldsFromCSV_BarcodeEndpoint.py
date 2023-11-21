@@ -84,7 +84,6 @@ for count, row in df.iterrows():
                     error_list.append(error_message)
                 error_list = '|'.join(error_list)
                 row['error'] = error_list
-            print(update)
     else:
         row['error'] = 'Item already updated'
     all_items.append(row)
