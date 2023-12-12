@@ -28,8 +28,24 @@ headers = {"Authorization": "apikey "+api_key,
            "Accept": "application/json",
            "Content-Type": "application/json"}
 
-filename = 'completed_LSC_AFAFreeze_11-15-23.csv'
+filename = 'test_2.csv'
 df = pd.read_csv(filename, dtype='string')
+
+
+# Function to extract errors from JSON response.
+def get_errors(metadata):
+    if isinstance(metadata, dict):
+        all_errors = []
+        error_list = metadata['errorList']['error']
+        for error in error_list:
+            error_message = error['errorMessage']
+            all_errors.append(error_message)
+        all_errors = '|'.join(all_errors)
+        error = all_errors
+    else:
+        error = metadata
+    return error
+
 
 all_items = []
 for count, row in df.iterrows():
@@ -41,21 +57,22 @@ for count, row in df.iterrows():
     barcode_endpoint = '/almaws/v1/items?item_barcode={}'.format(current_barcode)
     get_item_url = baseURL + barcode_endpoint
     # Make request for item.
-    item_metadata = requests.get(get_item_url, headers=headers).json()
+    try:
+        item_metadata = requests.get(get_item_url, headers=headers, timeout=10).json()
+    except requests.exceptions.RequestException as e:
+        row['error'] = e
+        print(e)
+        all_items.append(row)
+        continue
     try:
         # Try getting 'link' field from item_metadata.
         full_link = item_metadata['link']
         row['full_link'] = full_link
-        print(full_link)
     except KeyError:
-        error_list = []
-        errors = item_metadata['errorList']
-        errors = errors['error']
-        for error in errors:
-            error_message = error['errorMessage']
-            error_list.append(error_message)
-        error_list = '|'.join(error_list)
-        row['error'] = error_list
+        errors = get_errors(item_metadata)
+        row['error'] = errors
+        print(errors)
+        all_items.append(row)
         continue
     item_data = item_metadata['item_data']
     rmst = item_data['storage_location_id']
@@ -69,7 +86,13 @@ for count, row in df.iterrows():
             item_metadata = json.dumps(item_metadata)
             update_link = full_link
             print(update_link)
-            updated_metadata = requests.put(update_link, headers=headers, data=item_metadata).json()
+            try:
+                updated_metadata = requests.put(update_link, headers=headers, data=item_metadata,
+                                                timeout=10).json()
+            except requests.exceptions.RequestException as e:
+                row['error'] = e
+                all_items.append(row)
+                continue
             try:
                 updated_item = updated_metadata['item_data']
                 updated_description = updated_item['description']
@@ -77,14 +100,9 @@ for count, row in df.iterrows():
                 row['updated_description'] = updated_description
                 row['updated_rmst'] = updated_rmst
             except KeyError:
-                error_list = []
-                errors = item_metadata['errorList']
-                errors = errors['error']
-                for error in errors:
-                    error_message = error['errorMessage']
-                    error_list.append(error_message)
-                error_list = '|'.join(error_list)
-                row['error'] = error_list
+                errors = get_errors(item_metadata)
+                row['error'] = errors
+                all_items.append(row)
     else:
         row['error'] = 'Item already updated'
     all_items.append(row)
