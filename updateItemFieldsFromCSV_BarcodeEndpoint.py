@@ -28,7 +28,7 @@ headers = {"Authorization": "apikey "+api_key,
            "Accept": "application/json",
            "Content-Type": "application/json"}
 
-filename = 'test_2.csv'
+filename = 'completed_LSC_AFAFreeze_11-15-23.csv'
 df = pd.read_csv(filename, dtype='string')
 
 
@@ -102,7 +102,6 @@ for count, row in df.iterrows():
             except KeyError:
                 errors = get_errors(item_metadata)
                 row['error'] = errors
-                all_items.append(row)
     else:
         row['error'] = 'Item already updated'
     all_items.append(row)
