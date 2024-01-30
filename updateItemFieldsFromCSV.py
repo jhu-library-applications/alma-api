@@ -57,7 +57,7 @@ def get_errors(metadata):
 
 item_log = []
 for count, row in df.iterrows():
-    log = row
+    log = row.copy()
     # Get item information from DataFrame.
     item_barcode = row.get('current_barcode')
     print(count, item_barcode)
@@ -112,10 +112,6 @@ for count, row in df.iterrows():
         try:
             put_response = s.put(full_link, data=item_metadata, timeout=6).json()
         except requests.exceptions.Timeout:
-            log['error'] = 'Timeout Error'
-            item_log.append(log)
-            continue
-        except requests.exceptions.ReadTimeout:
             log['error'] = 'Timeout Error'
             item_log.append(log)
             continue

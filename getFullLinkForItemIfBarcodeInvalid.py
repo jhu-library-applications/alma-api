@@ -102,3 +102,4 @@ while rows_left > 0:
         get_info(df, start, stop)
         current_row = stop + 1
         rows_left = rows_left-batch_size
+
