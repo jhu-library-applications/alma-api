@@ -2,6 +2,7 @@ import requests
 import secret
 import argparse
 import pandas as pd
+from xml.etree import ElementTree
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-f', '--file')
@@ -40,14 +41,18 @@ mms_id_list = df['mms_id'].to_list()
 
 for mms_id in mms_id_list:
     # Create URL for specific mms_id record.
-    full_url = baseURL+endpoint+mms_id
+    full_url = baseURL+endpoint+str(mms_id)+'?expand=p_avail'
     print(full_url)
     # Make request for bib.
     try:
         r = requests.get(full_url, headers=headers)
-        xml_filename = 'bib_'+str(mms_id_list)+'.xml'
+        tree = ElementTree.fromstring(r.content)
+        record = tree.find('record')
+        string_record = ElementTree.tostring(record, encoding='unicode')
+        print(string_record)
+        xml_filename = 'bib_'+str(mms_id)+'.xml'
         with open(xml_filename, 'w') as f:
-            f.write(r)
+            f.write(string_record)
     except requests.exceptions:
         print('oh no!')
 

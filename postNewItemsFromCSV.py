@@ -81,7 +81,6 @@ for count, row in df.iterrows():
     # Build JSON from CSV values.
     holding_data['holding_id'] = holding_id
     add_optional_value('description', description, item_data)
-    add_optional_value('public_note', public_note, item_data)
     new_item = {'holding_data': holding_data, 'item_data': item_data}
     new_item_json = json.dumps(new_item)
 
