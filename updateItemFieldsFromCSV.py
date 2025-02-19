@@ -133,7 +133,7 @@ for count, row in df.iterrows():
     item_log.append(log)
 
 # Convert item_log to DataFrame.
-log_df = pd.DataFrame.from_dict(item_log)
+log_df = pd.DataFrame.from_records(item_log)
 dt = datetime.now().strftime('%Y-%m-%d%H.%M.%S')
 # Create CSV using DataFrame log. Quote all fields to avoid barcodes converting to scientific notation.
 log_df.to_csv('updatedItemsFieldsLog_10_'+dt+'.csv', index=False, quoting=csv.QUOTE_ALL)

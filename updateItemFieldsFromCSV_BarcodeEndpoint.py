@@ -28,7 +28,7 @@ headers = {"Authorization": "apikey "+api_key,
            "Accept": "application/json",
            "Content-Type": "application/json"}
 
-filename = 'completed_LSC_AFAFreeze_11-15-23.csv'
+filename = 'LSC AFA Update Spreadsheet 6-14-24.csv'
 df = pd.read_csv(filename, dtype='string')
 
 
