@@ -54,7 +54,7 @@ def check_field_values(tree_object, xml_attribute, xml_text):
         updated_value = subfield.text
         updated_values.append(updated_value)
 
-    updated_values =';'.join(updated_values)
+    updated_values ='|'.join(updated_values)
     return updated_values
 
 # Find and replace values from specified field in XML record.
@@ -68,13 +68,15 @@ def update_field_values(tree_object, xml_attribute, xml_text, value_pair):
             new = value_pair.get(text_866)
             if new is not None:
                 subfield.text = new
+            elif ";" in text_866:
+                log['semicolon'] = True
 
 # Read CSV as a DataFrame.
 df = pd.read_csv(filename, dtype={'mms_id': int, 'holding_id': int,
                                   'old_value': str, 'new_value': str})
 # Convert values into list using delimiter.
-df['old_value'] = df['old_value'].str.split(';')
-df['new_value'] = df['new_value'].str.split(';')
+df['old_value'] = df['old_value'].str.split('|')
+df['new_value'] = df['new_value'].str.split('|')
 total_holdings = len(df)
 
 # Match old_value with new_value using dictionary.
@@ -149,12 +151,12 @@ for count, row in df.iterrows():
 
 # Convert item_log to DataFrame.
 log_df = pd.DataFrame.from_records(item_log)
-log_df['old_value'] = log_df['old_value'].str.join(';')
-log_df['new_value'] = log_df['new_value'].str.join(';')
+log_df['old_value'] = log_df['old_value'].str.join('|')
+log_df['new_value'] = log_df['new_value'].str.join('|')
 print(log_df)
 dt = datetime.now().strftime('%Y-%m-%d%H.%M.%S')
 # Create CSV using DataFrame log. Quote all fields to avoid barcodes converting to scientific notation.
-log_df.to_csv('updatedHoldingFieldsLog_'+dt+'.csv', index=False, quoting=csv.QUOTE_ALL)
+log_df.to_csv('shmoffs_HoldingFieldsLog_'+dt+'.csv', index=False, quoting=csv.QUOTE_ALL)
 
 print("--- %s seconds ---" % (time.time() - start_time))
 
