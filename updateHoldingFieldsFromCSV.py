@@ -130,15 +130,23 @@ for count, row in df.iterrows():
             # Update holding record in Alma.
             put_response = s.put(full_link, data=updated_holding, timeout=6)
             if put_response.status_code == 200:
-                print('Holding record updated')
+                print('Holding record updated.')
                 updated_tree = ElementTree.fromstring(put_response.content)
                 # Gather new values from specified field to ensure update worked.
                 updated_fields = check_field_values(updated_tree, 'tag', '866')
                 log['updated_field'] = updated_fields
             else:
-                put_error = 'PUT General Error'
-                print(put_error)
-                log['error'] = put_error
+                try:
+                    error_tree = ElementTree.fromstring(put_response.content)
+                    error_list = error_tree.find('{http://com/exlibris/urm/general/xmlbeans}errorList')
+                    error = error_list.find('{http://com/exlibris/urm/general/xmlbeans}error')
+                    error_message = error.find('{http://com/exlibris/urm/general/xmlbeans}errorMessage')
+                    error_message = error_message.text
+                    put_error = error_message
+                    print(put_error)
+                    log['error'] = put_error
+                except ElementTree.ParseError:
+                    log['error'] = 'PUT parse error'
         except requests.exceptions.Timeout:
             put_error = 'PUT Timeout Error'
             print(put_error)
@@ -156,7 +164,7 @@ log_df['new_value'] = log_df['new_value'].str.join('|')
 print(log_df)
 dt = datetime.now().strftime('%Y-%m-%d%H.%M.%S')
 # Create CSV using DataFrame log. Quote all fields to avoid barcodes converting to scientific notation.
-log_df.to_csv('shmoffs_HoldingFieldsLog_'+dt+'.csv', index=False, quoting=csv.QUOTE_ALL)
+log_df.to_csv('shmoffs04_HoldingFieldsLog_'+dt+'.csv', index=False, quoting=csv.QUOTE_ALL)
 
 print("--- %s seconds ---" % (time.time() - start_time))
 
