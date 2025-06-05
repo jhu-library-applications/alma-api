@@ -51,20 +51,20 @@ for count, horizon_id in enumerate(horizon_list):
     # Make request for bib.
     try:
         r = requests.get(full_url, headers=headers).json()
+        bibs = r.get('bib')
+        if bibs:
+            for bib in bibs:
+                print()
+                record_dict = {'horizon_id': horizon_id}
+                mms_id = bib['mms_id']
+                title = bib['title']
+                record_dict['mms_id'] = mms_id
+                record_dict['title'] =title
+                print(record_dict)
+                all_records.append(record_dict)
     except requests.exceptions:
         print('oh no!')
         pass
-    bibs = r.get('bib')
-    if bibs:
-        for bib in bibs:
-            print()
-            record_dict = {'horizon_id': horizon_id}
-            mms_id = bib['mms_id']
-            title = bib['title']
-            record_dict['mms_id'] = mms_id
-            record_dict['title'] =title
-            print(record_dict)
-            all_records.append(record_dict)
 
 updated_df = pd.DataFrame.from_records(all_records)
 dt = datetime.now().strftime('%Y-%m-%d%H.%M.%S')
