@@ -47,11 +47,16 @@ s.headers = headers
 
 # Gather list of mms_ids from CSV.
 df = pd.read_csv(filename)
-mms_id_list = df['mms_id'].to_list()
+
 
 item_log = []
-for count, mms_id in enumerate(mms_id_list):
+for count, row in df.items():
     # Create URL for specific mms_id record.
+    mms_id = row.get('mms_id')
+    access_url = row.get('url')
+    pid = row.get('pid')
+    fields['856']['subfields']['g'] = pid
+    fields['856']['subfields']['u'] = access_url
     full_url = baseURL+endpoint+str(mms_id)
     print(count, full_url)
     log = {'mms_id': mms_id}
